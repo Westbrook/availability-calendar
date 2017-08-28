@@ -1,0 +1,62 @@
+<link rel="import" href="../polymer/polymer-element.html">
+<link rel="import" href="date-time-picker.html">
+
+<dom-module id="time-span-picker">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+      date-time-picker + date-time-picker {
+        margin-left: 24px;
+      }
+    </style>
+    <date-time-picker
+      label-for-date="Date"
+      label-for-time="Start Time"
+      date-time="{{startDateTime}}"
+      max-time="[[endDateTime]]"
+    ></date-time-picker>
+    <date-time-picker
+      label-for-time="End Time"
+      no-date
+      date-time="{{endDateTime}}"
+      min-time="[[startDateTime]]"
+    ></date-time-picker>
+  </template>
+  <script>
+    /**
+     * `time-span-picker`
+     * Create a time span from one date time to another.
+     *
+     * @customElement
+     * @polymer
+     * @demo demo/index.html
+     */
+    class TimeSpanPicker extends Polymer.Element {
+      static get is() { return 'time-span-picker'; }
+      static get properties() {
+        return {
+          startDateTime: {
+            type: Object,
+            notify: true,
+            observer: '_startDateTimeChanged'
+          },
+          endDateTime: {
+            type: Object,
+            notify: true
+          }
+        };
+      }
+      _startDateTimeChanged(startDateTime, oldStartDateTime) {
+        if (!oldStartDateTime || startDateTime.isSame(oldStartDateTime)) return;
+        let difference = startDateTime.date() - oldStartDateTime.date();
+        let newEndTime = this.endDateTime.clone();
+        newEndTime.add(difference, 'days');
+        this.endDateTime = newEndTime;
+      }
+    }
+
+    window.customElements.define(TimeSpanPicker.is, TimeSpanPicker);
+  </script>
+</dom-module>

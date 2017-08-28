@@ -1,0 +1,151 @@
+<link rel="import" href="../polymer/polymer-element.html">
+<link rel="import" href="../neon-animation/web-animations.html">
+<link rel="import" href="../vaadin-date-picker/vaadin-date-picker.html">
+<link rel="import" href="../paper-dropdown-menu/paper-dropdown-menu.html">
+<link rel="import" href="../paper-item/paper-item.html">
+<link rel="import" href="../paper-listbox/paper-listbox.html">
+
+<dom-module id="date-time-picker">
+  <template>
+    <style>
+      :host {
+        display: flex;
+      }
+      vaadin-date-picker {
+        margin-right: 24px;
+      }
+      [hidden] {
+        display: none;
+      }
+    </style>
+    <vaadin-date-picker
+      label="[[labelForDate]]"
+      value="{{date}}"
+      hidden$="[[noDate]]"
+    ></vaadin-date-picker>
+    <paper-dropdown-menu
+      label="[[labelForTime]]"
+      hidden$="[[noTime]]">
+      <paper-listbox slot="dropdown-content" selected="{{selectedTimeIndex}}">
+        <dom-repeat id="times" items="[[times]]" on-dom-change="_timeDomChanged">
+          <template>
+            <paper-item on-click="_changeTime">[[item.displayTime]]</paper-item>
+          </template>
+        </dom-repeat>
+      </paper-listbox>
+    </paper-dropdown-menu>
+  </template>
+  <script>
+    /**
+     * `date-time-picker`
+     * Pick a date and a time.
+     *
+     * @customElement
+     * @polymer
+     * @demo demo/index.html
+     */
+    class DateTimePicker extends Polymer.Element {
+      static get is() { return 'date-time-picker'; }
+      static get properties() {
+        return {
+          labelForDate: String,
+          labelForTime: String,
+          noDate: {
+            type: Boolean,
+            value: false
+          },
+          noTime: {
+            type: Boolean,
+            value: false
+          },
+          times: {
+            type: Array
+          },
+          dateTime: {
+            type: Object,
+            notify: true,
+            observer: '_dateTimeChanged'
+          },
+          minTime: {
+            type: Object,
+            observer: '_minTimeChanged'
+          },
+          maxTime: {
+            type: Object,
+            observer: '_maxTimeChanged'
+          },
+          date: {
+            type: String,
+            observer: '_dateChanged'
+          },
+          time: String,
+          selectedTimeIndex: Number,
+          timeInterval: {
+            type: Number,
+            value: 15
+          }
+        };
+      }
+      timePickerValues() {
+        if (!this.dateTime) return;
+        let timePickerValues = [];
+        let hours = (this.maxTime && this.maxTime.date() === this.dateTime.date()) ? this.maxTime.hours() + 1 : 24;
+        let minHours = this.minTime ? this.minTime.hours() : 0;
+        while (hours > minHours) {
+          hours--;
+          let minutes = (this.maxTime && hours === this.maxTime.hours()) ? this.maxTime.minutes() : 60;
+          let minMinutes = ( this.minTime && hours === minHours) ? this.minTime.minutes() + this.timeInterval : 0;
+          while (minutes > minMinutes) {
+            minutes -= this.timeInterval;
+            let timeHours = hours ? (hours > 12 ? hours - 12 : hours) : '12';
+            let timeMinutes = minutes ? minutes : '00';
+            let timeMark = hours >= 12 ? 'PM' : 'AM';
+            let time = {
+              displayTime: `${timeHours}:${timeMinutes} ${timeMark}`,
+              dateTime: moment.utc(`${this.dateTime.year()}-${this.dateTime.month() + 1}-${this.dateTime.date()}T${hours}:${minutes}:00`, "YYYY-MM-DD HH:mm:ss")
+            }
+            timePickerValues.unshift(time);
+          }
+        }
+        if (!this.maxTime) timePickerValues.push({
+          displayTime: '12:00 AM',
+          dateTime: moment.utc(`${this.dateTime.year()}-${this.dateTime.month()}-${this.dateTime.date() + 1}T00:00:00`, "YYYY-MM-DD HH:mm:ss")
+        });
+        this.times = timePickerValues;
+      }
+      _timeDomChanged() {
+        this.selectedTimeIndex = this.times.findIndex((time, index) => {
+          return this.dateTime.isSame(time.dateTime);
+        });
+      }
+      _dateTimeChanged(time) {
+        this.timePickerValues();
+        this.date = time.format('YYYY-MM-DD');
+      }
+      _changeTime(e) {
+        let dateTime = this.times[this.$.times.modelForElement(e.target).index].dateTime;
+        this.dateTime = dateTime;
+      }
+      _minTimeChanged() {
+        this.timePickerValues();
+      }
+      _maxTimeChanged() {
+        this.timePickerValues();
+      }
+      _dateChanged(date, oldDate) {
+        if (!this.dateTime || !oldDate) return;
+        date = date.split('-');
+        let moment = {
+          years: parseFloat(date[0],10),
+          months: parseFloat(date[1],10) - 1,
+          date: parseFloat(date[2],10)
+        };
+        let newDateTime = this.dateTime.clone();
+        newDateTime.set(moment);
+        this.dateTime = newDateTime;
+      }
+    }
+
+    window.customElements.define(DateTimePicker.is, DateTimePicker);
+  </script>
+</dom-module>

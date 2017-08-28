@@ -1,0 +1,204 @@
+<link rel="import" href="../polymer/polymer-element.html">
+<link rel="import" href="../scheduler-component/scheduler-component.html">
+<link rel="import" href="../paper-dialog/paper-dialog.html">
+<link rel="import" href="../paper-checkbox/paper-checkbox.html">
+<link rel="import" href="../paper-button/paper-button.html">
+<link rel="import" href="../paper-radio-group/paper-radio-group.html">
+<link rel="import" href="../paper-radio-button/paper-radio-button.html">
+<link rel="import" href="../paper-styles/element-styles/paper-material-styles.html">
+<link rel="import" href="time-span-picker.html">
+
+<dom-module id="availability-calendar">
+  <template>
+    <style is="custom-style" include="paper-material-styles">
+      :host {
+        display: block;
+      }
+      time-span-picker {
+        display: flex;
+      }
+      .repeat-options {
+        padding: 24px;
+        margin-top: 24px;
+      }
+      paper-dialog {
+        overflow: auto;
+      }
+      paper-radio-group {
+        display: flex;
+      }
+      paper-radio-group {
+        padding-top: 12px;
+        flex-direction: column;
+      }
+      paper-radio-button {
+        padding-top: 0;
+        padding-bottom: 0;
+      }
+      paper-radio-group vaadin-date-picker {
+        padding-top: 0;
+      }
+      .actions {
+        display: flex;
+        justify-content: flex-end;
+      }
+      [dialog-confirm] {
+        background: #4b99ee;
+        color: #fff;
+      }
+      [hidden] {
+        display: none;
+      }
+    </style>
+    <scheduler-component
+      id="scheduler"
+      on-event-click="viewEvent"
+      on-select="createEvent"
+      default-view="agendaWeek"
+      event-color="#8e44ad"
+      text-color="#ecf0f1"
+      editable
+      selectable
+      events="[[events]]"
+    ></scheduler-component>
+    <paper-dialog
+      on-iron-overlay-closed="_overlayClosed"
+      id="dialog"
+      with-backdrop
+      opened="{{viewingEvent}}">
+      <h2>Availability Editor</h2>
+      <time-span-picker
+        start-date-time="{{startTime}}"
+        end-date-time="{{endTime}}"
+      ></time-span-picker>
+      <div>
+        <paper-checkbox checked="{{repeat}}">Repeat</paper-checkbox>
+        <div class="paper-material repeat-options" elevation="3" hidden$="[[!repeat]]">
+          <div>
+            Repeat on:
+            <paper-checkbox>Su</paper-checkbox>
+            <paper-checkbox>M</paper-checkbox>
+            <paper-checkbox>Tu</paper-checkbox>
+            <paper-checkbox>W</paper-checkbox>
+            <paper-checkbox>Th</paper-checkbox>
+            <paper-checkbox>F</paper-checkbox>
+            <paper-checkbox>Sa</paper-checkbox>
+          </div>
+          <div>
+            End on:
+            <paper-radio-group selected="never">
+              <paper-radio-button name="never">never</paper-radio-button>
+              <paper-radio-button name="on" checked="{{hasEndOnDate}}"><vaadin-date-picker label="on" disabled$="[[!hasEndOnDate]]"></vaadin-date-picker></paper-radio-button>
+            </paper-radio-group>
+          </div>
+        </div>
+      </div>
+      <div class="actions">
+        <paper-button
+          on-click="_deleteEvent"
+          raised
+          dialog-dismiss
+          hidden$="[[!editingEvent]]"
+        >Delete</paper-button>
+        <paper-button raised dialog-dismiss>Cancel</paper-button>
+        <paper-button raised dialog-confirm autofocus>Save</paper-button>
+      </div>
+    </paper-dialog>
+  </template>
+
+  <script>
+    /**
+     * `availability-calendar`
+     * Show and edit calendar events.
+     *
+     * @customElement
+     * @polymer
+     * @demo demo/index.html
+     */
+    class AvailabilityCalendar extends Polymer.Element {
+      static get is() { return 'availability-calendar'; }
+      static get properties() {
+        return {
+          viewingEvent: {
+            type: Boolean,
+            value: false
+          },
+          editingEvent: {
+            type: Boolean,
+            value: false
+          },
+          events: {
+            type: Array
+          },
+          startTime: {
+            type: Object
+          },
+          endTime: {
+            type: Object
+          },
+          repeat: {
+            type: Boolean,
+            observer: '_repeatChanged'
+          },
+          hasEndOnDate: {
+            type: Boolean
+          },
+          eventId: {
+            type: String
+          }
+        };
+      }
+      createEvent(e) {
+        let detail = e.detail;
+        this.displayEvent(detail.start, detail.end);
+      }
+      viewEvent(e) {
+        let detail = e.detail.calEvent;
+        this.displayEvent(detail.start, detail.end, detail.id);
+        this.editingEvent = true;
+      }
+      displayEvent(start, end, id) {
+        this.startTime = start;
+        this.endTime = end;
+        this.id = id;
+        this.viewingEvent = true;
+      }
+      _repeatChanged() {
+        this.$.dialog.center();
+      }
+      _overlayClosed(e) {
+        if (e.target !== e.currentTarget) return;
+        let detail = e.detail;
+        if (detail.confirmed) {
+          this._editEvent();
+        }
+        this.editingEvent = false;
+        this.eventId = null;
+      }
+      _editEvent() {
+        let event = {
+          start: this.startTime.format(),
+          end: this.endTime.format(),
+          id: this.eventId || this.events.length
+        };
+        let eventIndex = this.editingEvent ? this._eventIndex() : event.id;
+        let events = this.events.slice();
+        events.splice(eventIndex, 1, event);
+        this.events = events;
+      }
+      _deleteEvent() {
+        let deletedEventIndex = this._eventIndex();
+        let events = this.events.slice();
+        events.splice(deletedEventIndex, 1);
+        this.events = events;
+      }
+      _eventIndex() {
+        return this.events.findIndex((event) => {
+          return event.id === this.eventId;
+        });
+      }
+    }
+
+    window.customElements.define(AvailabilityCalendar.is, AvailabilityCalendar);
+  </script>
+</dom-module>
